@@ -3,12 +3,10 @@
 
 import os
 
-from torch.utils.data import Dataset
-import torch.nn.functional as F
-import torch
 import PIL.Image as Image
 import numpy as np
-
+import torch
+from torch.utils.data import Dataset
 
 PASCAL_CLASSNAMES = [
     'aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow',
@@ -79,7 +77,7 @@ class DatasetPASCAL(Dataset):
         
         classes = torch.tensor([[class_sample]], dtype=torch.int64).reshape(1, 1)        
         
-        output = {'query_images': query_img[None],'query_segmentations': query_mask,
+        output = {'query_images': query_img[None], 'query_segmentations': query_mask,
                   'support_images': support_imgs, 'support_segmentations': support_masks,
                   'query_classes': classes, 'support_classes': classes,
                   'identifier': f"class {classes.item()}, query {idx}"}
@@ -154,7 +152,6 @@ class DatasetPASCAL(Dataset):
             return class_ids_val
 
     def build_img_metadata(self):
-
         def read_metadata(split, fold_id):
             fold_n_metadata = f'{self.data_list_path}/{split}/fold{fold_id}.txt'
             with open(fold_n_metadata, 'r') as f:

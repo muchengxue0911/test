@@ -561,18 +561,15 @@ class DGP(nn.Module):
         return segmap
     
     def forward(self, data, state=None, visualize=False, epoch=0):
-        """We denote sizes with single capital letters. B is batch size, S is support set size,
-        Q is query set size, C is the number of classes (often 1), H height, and W width.
-        Args:
-            data (dict)
-                support_images        (None or Tensor(B, S, 3, H, W))
-                support_segmentations (None or LongTensor(B, S, H, W))
-                support_classes       (None or LongTensor(B, N, C))
-                query_images          (None or Tensor(B, Q, 3, H, W))
-                query_segmentations   (None or LongTensor(B, Q, 3, H, W))
-                query_classes         (None or LongTensor(B, N, C))
         """
-        GLOBALS['data identifier'] = data['identifier']
+
+        :param data:
+        :param state:
+        :param visualize:
+        :param epoch:
+        :return:
+        """
+        # GLOBALS['data identifier'] = data['identifier']
         #GLOBALS['number of forward calls'] = GLOBALS['number of forward calls'] + 1
         if state is None:
             state = {}

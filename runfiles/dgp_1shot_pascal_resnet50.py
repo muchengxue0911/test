@@ -7,13 +7,13 @@ import math
 import random
 
 parser = argparse.ArgumentParser(description="Experiment runfile, you run experiments from this file")
-parser.add_argument("--train", action="store_true", default=False)
+parser.add_argument("--train", action="store_true", default=True)
 parser.add_argument("--test", action="store_true", default=False)
-parser.add_argument("--dataset", type=str,required=True)
-parser.add_argument("--fold", type=int,required=True)
+parser.add_argument("--dataset", type=str, required=True)
+parser.add_argument("--fold", type=int, required=True)
 parser.add_argument("--test_num_support", type=int, default=1)
-parser.add_argument("--add_packages_to_path",action="store_true",default=False)
-parser.add_argument("--seed", type=int,default=0)
+parser.add_argument("--add_packages_to_path", action="store_true",default=False)
+parser.add_argument("--seed", type=int, default=0)
 parser.add_argument("--checkpoint")
 parser.add_argument("--debug", action="store_true", default=False)
 parser.add_argument("-d", "--device", dest="device", help="Device to run on, the cpu or gpu.",
@@ -36,7 +36,7 @@ import torchvision as tv
 
 from local_config import config
 import fss.models.dgp as dgp
-from fss.models.kernels import RBF,NormalizedRBF,CosineSim,SoftPlusCosineSim,Trivial,LinearKernel
+from fss.models.kernels import RBF,LinearKernel
 import fss.datasets.pascal as pascal
 import fss.trainers.fss_trainer as fss_trainer
 import fss.evaluation.fss_evaluator as fss_evaluator
@@ -61,6 +61,8 @@ def train(model, device, dataset, fold, restart, seed):
     val_transform = Compose([Resize((384, 384)),
                                 ToTensor(),
                                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+
+
     training_data = pascal.DatasetPASCAL(
         datapath = config['pascal_path'],
         fold  = fold,
