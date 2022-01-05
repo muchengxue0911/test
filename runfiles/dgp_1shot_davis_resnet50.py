@@ -1,17 +1,19 @@
-import os
-import sys
 import argparse
 import datetime
-import time
-import math
+import os
 import random
+import sys
+import time
+
+from fss.datasets.davis_dataset import DAVISDataset
+from fss.utils.load_subset import load_sub_davis
 
 parser = argparse.ArgumentParser(description="Experiment runfile, you run experiments from this file")
-parser.add_argument("--train", action="store_true", default=False)
+parser.add_argument("--train", action="store_true", default=True)
 parser.add_argument("--test", action="store_true", default=False)
-parser.add_argument("--dataset", type=str,required=True)
+parser.add_argument("--dataset", type=str,required=True,default='davis')
 parser.add_argument("--fold", type=int,required=True)
-parser.add_argument("--test_num_support", type=int, default=5)
+parser.add_argument("--test_num_support", type=int, default=1)
 parser.add_argument("--add_packages_to_path",action="store_true",default=False)
 parser.add_argument("--seed", type=int,default=0)
 parser.add_argument("--checkpoint")
@@ -31,17 +33,16 @@ import torch
 torch.set_printoptions(edgeitems=4, linewidth=117)
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import DataLoader, Subset, WeightedRandomSampler
+from torch.utils.data import DataLoader
 import torchvision as tv
 
 from local_config import config
 import fss.models.dgp as dgp
-from fss.models.kernels import RBF,LinearKernel
-import fss.datasets.pascal as pascal
-import fss.datasets.coco as coco
+from fss.models.kernels import RBF
+import fss.datasets.davis as davis
 import fss.trainers.fss_trainer as fss_trainer
 import fss.evaluation.fss_evaluator as fss_evaluator
-from fss.datasets.transform import Compose, Normalize, RandomRotate90, Resize, ToTensor, RandomHorizontalFlip
+from fss.datasets.transform import Compose, Normalize, Resize, ToTensor, RandomHorizontalFlip
 
 def train(model, device, dataset, fold, restart, seed):
     params_bb = ({param for param in model.learner.image_encoder.parameters()}
@@ -51,43 +52,41 @@ def train(model, device, dataset, fold, restart, seed):
                   {'params': [param for param in params_bb if param.requires_grad], 'lr': 1e-6}]
     optimizer = optim.AdamW(parameters, lr=5e-5, weight_decay=1e-3)
     lr_sched = optim.lr_scheduler.LambdaLR(optimizer, (lambda n:
-                                                       1.0 if n <= 30 else
+                                                       1.0 if n <= 10 else
                                                        0.1))
-    num_epochs = 40
+    num_epochs = 20
 
     train_transform = Compose([RandomHorizontalFlip(),
-                                Resize((512, 512)),
+                                Resize((384, 384)),
                                 ToTensor(),
                                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    val_transform = Compose([Resize((512, 512)),
+    val_transform = Compose([Resize((384, 384)),
                                 ToTensor(),
                                 Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    training_data = coco.DatasetCOCO(
-        datapath = config['coco_path'],
-        fold  = fold,
-        transform = train_transform,
-        split      = 'train',
-        shot   = 5,
-        mode   = "training",
-        data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'coco'),
-        class_balance = False,
-    )
-    validation_data = coco.DatasetCOCO(
-        datapath = config['coco_path'],
-        fold  = fold,
-        transform = val_transform,
-        split      = 'val',
-        shot   = 5,
-        mode   = "training",
-        data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'coco'),
-        class_balance = False,
-    )
+
+    # train_dataset = ConcatDataset([davis_dataset] * 5 + [yv_dataset])
+
+    training_data = DAVISDataset('/home/wangjian/workspace/data/davis/JPEGImages/480p', '/home/wangjian/workspace/data/davis/Annotations/480p',
+                                 5, is_bl=False,
+                                 subset=load_sub_davis())
+    validation_data = DAVISDataset('/home/wangjian/workspace/data/davis/trainval/JPEGImages/480p', '/home/wangjian/workspace/data/davis/trainval/Annotations/480p',
+                                   5, is_bl=False,
+                                   subset=load_sub_davis())
+        # davis.DatasetDAVIS(
+        # datapath = config['davis_path'],
+        # fold  = fold,
+        # transform = val_transform,
+        # split      = 'val',
+        # shot   = 1,
+        # mode   = "training",
+        # data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
+        # )
     print("Loaded training set with", len(training_data), "samples")
     print("Loaded validation set with", len(validation_data), "samples")
     training_sampler = torch.utils.data.RandomSampler(training_data, num_samples=8000, replacement=True)
     validation_sampler = torch.utils.data.RandomSampler(validation_data, num_samples=2000, replacement=True)
-    training_loader = DataLoader(training_data, sampler=training_sampler, batch_size=8, num_workers=16)
-    validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=20, num_workers=16)
+    training_loader = DataLoader(training_data, sampler=training_sampler, batch_size=8, num_workers=8)
+    validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=20, num_workers=8)
 
     trainer = fss_trainer.FSSTrainer(
         model                = model,
@@ -108,40 +107,21 @@ def train(model, device, dataset, fold, restart, seed):
     trainer.train(num_epochs)
 
 def test(model, device, dataset, fold, num_support, seed):
-    if dataset == 'coco':
-        test_transform = Compose([
-            Resize((512, 512)),
-            ToTensor(),
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
-        data = coco.DatasetCOCO(
-            datapath = config['coco_path'],
-            fold  = fold,
-            transform = test_transform,
-            split      = 'val',
-            shot   = num_support,
-            mode   = "evaluation",
-            data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'coco')
-        )
-        sampler = torch.utils.data.RandomSampler(data, replacement=True, num_samples=20000)
-    elif dataset == 'pascal_from_coco':
-        test_transform = Compose([
-            Resize((384, 384)),
-            ToTensor(),
-            Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-        ])
-        data = pascal.DatasetPASCAL(
-            datapath = config['pascal_path'],
-            fold  = fold,
-            transform = test_transform,
-            split      = 'not_in_coco_train',
-            shot   = num_support,
-            mode   = "evaluation",
-            data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
-        )
-        sampler = torch.utils.data.RandomSampler(data, replacement=True, num_samples=5000)
+    test_transform = Compose([Resize((448,448)),
+                              ToTensor(),
+                              Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
+    data = davis.DatasetDAVIS(
+        datapath = config['pascal_path'],
+        fold  = fold,
+        transform = test_transform,
+        split      = 'val',
+        shot   = num_support,
+        mode   = "evaluation",
+        data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
+    )
+    sampler = davis.SequentialSampler(data, 5000)
     data = DataLoader(data, sampler=sampler, batch_size=20, num_workers=11)
-    
+        
     evaluator = fss_evaluator.FSSEvaluator(
         visualization_path     = os.path.join(
             config['visualization_path'],

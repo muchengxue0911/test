@@ -36,7 +36,7 @@ import torchvision as tv
 
 from local_config import config
 import fss.models.dgp as dgp
-from fss.models.kernels import RBF,NormalizedRBF,CosineSim,SoftPlusCosineSim,Trivial,LinearKernel
+from fss.models.kernels import RBF,LinearKernel
 import fss.datasets.pascal as pascal
 import fss.datasets.coco as coco
 import fss.trainers.fss_trainer as fss_trainer
