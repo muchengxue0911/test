@@ -140,7 +140,7 @@ def test(model, device, dataset, fold, num_support, seed):
             data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
         )
         sampler = torch.utils.data.RandomSampler(data, replacement=True, num_samples=5000)
-    data = DataLoader(data, sampler=sampler, batch_size=20, num_workers=11)
+    data = DataLoader(data, sampler=sampler, batch_size=20, num_workers=16)
     
     evaluator = fss_evaluator.FSSEvaluator(
         visualization_path     = os.path.join(

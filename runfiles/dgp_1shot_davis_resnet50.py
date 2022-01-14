@@ -3,6 +3,7 @@ import datetime
 import os
 import random
 import sys
+sys.path.append('/home/amax/code/test/fss')
 import time
 
 from fss.datasets.davis_dataset import DAVISDataset
@@ -11,15 +12,15 @@ from fss.utils.load_subset import load_sub_davis
 parser = argparse.ArgumentParser(description="Experiment runfile, you run experiments from this file")
 parser.add_argument("--train", action="store_true", default=True)
 parser.add_argument("--test", action="store_true", default=False)
-parser.add_argument("--dataset", type=str,required=True,default='davis')
-parser.add_argument("--fold", type=int,required=True)
+parser.add_argument("--dataset", type=str, required=True, default='davis')
+parser.add_argument("--fold", type=int, required=True)
 parser.add_argument("--test_num_support", type=int, default=1)
 parser.add_argument("--add_packages_to_path",action="store_true",default=False)
 parser.add_argument("--seed", type=int,default=0)
 parser.add_argument("--checkpoint")
-parser.add_argument("--debug", action="store_true", default=False)
+parser.add_argument("--debug", action="store_true", default=True)
 parser.add_argument("-d", "--device", dest="device", help="Device to run on, the cpu or gpu.",
-                    type=str, default="cuda:0")
+                    type=str, default="cuda:1")
 parser.add_argument("--restart", action="store_true", default=False)
 args = parser.parse_args()
 #Following is needed to enable running the code when not using a package solution
@@ -66,10 +67,10 @@ def train(model, device, dataset, fold, restart, seed):
 
     # train_dataset = ConcatDataset([davis_dataset] * 5 + [yv_dataset])
 
-    training_data = DAVISDataset('/home/wangjian/workspace/data/davis/JPEGImages/480p', '/home/wangjian/workspace/data/davis/Annotations/480p',
+    training_data = DAVISDataset('/home/amax/code/data/davis/JPEGImages/480p', '/home/amax/code/data/davis/Annotations/480p',
                                  5, is_bl=False,
                                  subset=load_sub_davis())
-    validation_data = DAVISDataset('/home/wangjian/workspace/data/davis/trainval/JPEGImages/480p', '/home/wangjian/workspace/data/davis/trainval/Annotations/480p',
+    validation_data = DAVISDataset('/home/amax/code/data/davis/trainval/JPEGImages/480p', '/home/amax/code/data/davis/trainval/Annotations/480p',
                                    5, is_bl=False,
                                    subset=load_sub_davis())
         # davis.DatasetDAVIS(
@@ -85,8 +86,8 @@ def train(model, device, dataset, fold, restart, seed):
     print("Loaded validation set with", len(validation_data), "samples")
     training_sampler = torch.utils.data.RandomSampler(training_data, num_samples=8000, replacement=True)
     validation_sampler = torch.utils.data.RandomSampler(validation_data, num_samples=2000, replacement=True)
-    training_loader = DataLoader(training_data, sampler=training_sampler, batch_size=8, num_workers=8)
-    validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=20, num_workers=8)
+    training_loader = DataLoader(training_data, sampler=training_sampler, batch_size=8, num_workers=20)
+    validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=16, num_workers=20)
 
     trainer = fss_trainer.FSSTrainer(
         model                = model,
@@ -120,7 +121,7 @@ def test(model, device, dataset, fold, num_support, seed):
         data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
     )
     sampler = davis.SequentialSampler(data, 5000)
-    data = DataLoader(data, sampler=sampler, batch_size=20, num_workers=11)
+    data = DataLoader(data, sampler=sampler, batch_size=16, num_workers=20)
         
     evaluator = fss_evaluator.FSSEvaluator(
         visualization_path     = os.path.join(
@@ -231,7 +232,9 @@ def main(args):
         ),
         debugging = args.debug,
         loss = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 4.0]), ignore_index=255),
+        # loss=nn.CrossEntropyLoss(weight=torch.Tensor([1.0]), ignore_index=255),
     )
+    print(model)
     if args.checkpoint:
         checkpoint = torch.load(args.checkpoint)
         model.load_state_dict(checkpoint['net'])

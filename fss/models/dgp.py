@@ -508,6 +508,7 @@ class DGP(nn.Module):
         self.learner = learner
         if loss is None:
             loss = nn.CrossEntropyLoss(ignore_index=255)
+            # loss = nn.CrossEntropyLoss(ignore_index=255)
         self.loss = loss
         self.calculate_losses = True
         self.support_set_sampler = support_set_sampler
@@ -517,9 +518,20 @@ class DGP(nn.Module):
         return ['query seg CE', 'query seg iou']
 
     def get_losses(self, segscores, segs, segannos, classes):
+        # print('segannos:',segannos.min(), segannos.max())
+        # print('segs:', segs.min(), segs.max())
+        # print('classes:', classes)
+
         assert segs.size() == segannos.size(),'Segs and segannos must be of same shape'
         B, Q, Cp1, H, W = segscores.size()
-        loss = self.loss(segscores.view(B*Q, Cp1, H, W), segannos.view(B*Q, H, W))
+        # print('scoreshape:', segscores.view(B*Q, Cp1, H, W).shape)
+        # print('segannos:', segannos.view(B*Q, H, W).long().shape)
+
+        # print('max segscores is ',  torch.max(segscores))
+        # print('max segannos is ', torch.max(segannos))
+        # if torch.max(segannos) < 255:
+        #     print(segannos)
+        loss = self.loss(segscores.view(B * Q, Cp1, H, W), segannos.view(B * Q, H, W).long())
         iou = self._get_iou(segs, segannos, classes)
         return {'total': loss, 'partial': {'query seg CE': {'val': loss, 'N': B*Q}, 'query seg iou': iou}}
 
@@ -538,8 +550,11 @@ class DGP(nn.Module):
         _, _, C = classes.size()
         iou = torch.zeros((B, Q, C), device=classes.device)
         segs = segs.clone()
-        segs[segannos == 255] = 255
-        for c in range(1, C+1):
+        # print(max(segannos))
+        # print(max(segs))
+        # segs[segannos == 255] = 255
+        # for c in range(1, C+1):
+        for c in range(1, C+1 ):
             mask_pred = (segs == c)
             mask_anno = (segannos == c)
             intersection = (mask_pred * mask_anno).sum(dim=(2,3))
@@ -594,6 +609,7 @@ class DGP(nn.Module):
                 data['query_images'],
                 state['distributions'],
                 query_segmentations)
+            # output_segs = output_segscores.argmax(dim=2)
             output_segs = output_segscores.argmax(dim=2)
             
         if self.calculate_losses:

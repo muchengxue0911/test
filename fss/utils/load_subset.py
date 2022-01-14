@@ -5,7 +5,7 @@ YouTubeVOS - I manually filtered some erroneous ones out but I haven't checked a
 """
 
 
-def load_sub_davis(path='/home/wangjian/workspace/test/fss/utils/davis_subset.txt'):
+def load_sub_davis(path='/home/amax/code/test/fss/utils/davis_subset.txt'):
     with open(path, mode='r') as f:
         subset = set(f.read().splitlines())
     return subset

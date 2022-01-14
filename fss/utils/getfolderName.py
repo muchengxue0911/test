@@ -6,4 +6,4 @@ def file_name(file_dir):
         print(files) #当前路径下所有非目录子文件
 
 
-file_name('/home/wangjian/workspace/data/davis/JPEGImages/480p/')
+file_name('/home/amax/data/davis/JPEGImages/480p/')
