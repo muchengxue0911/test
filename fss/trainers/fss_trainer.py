@@ -24,8 +24,8 @@ class FSSTrainer:
         
         self._train_loader = train_loader
         self._val_loaders = val_loaders
-        if isinstance(self._val_loaders, list):
-            self._val_loaders = {f'val{idx}': ldr for idx, ldr in enumerate(self._val_loaders)}
+        # if isinstance(self._val_loaders, list):
+        #     self._val_loaders = {f'val{idx}': ldr for idx, ldr in enumerate(self._val_loaders)}
 
         self._gradient_clip_value = gradient_clip_value
         assert gradient_clip_value is None or isinstance(gradient_clip_value, (int, float))
@@ -42,7 +42,8 @@ class FSSTrainer:
         
         # Initialize statistics variables @todo should we also add some KPI s.a. mIoU?
         self._stats = {}
-        modes = ['train'] + list(self._val_loaders.keys())
+        modes = ['train']
+                # + list(self._val_loaders.keys())
         for mode in modes:
             for loss_key in model.get_loss_idfs():
                 self._stats[f'{mode} {loss_key} loss'] = AverageMeter()

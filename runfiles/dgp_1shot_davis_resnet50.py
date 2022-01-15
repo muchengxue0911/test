@@ -3,11 +3,15 @@ import datetime
 import os
 import random
 import sys
+
+from fss.datasets.yv_dataset import YoutubeDataset
+
 sys.path.append('/home/amax/code/test/fss')
 import time
 
 from fss.datasets.davis_dataset import DAVISDataset
 from fss.utils.load_subset import load_sub_davis
+from fss.utils.load_subset import load_sub_davis_local
 
 parser = argparse.ArgumentParser(description="Experiment runfile, you run experiments from this file")
 parser.add_argument("--train", action="store_true", default=True)
@@ -20,7 +24,7 @@ parser.add_argument("--seed", type=int,default=0)
 parser.add_argument("--checkpoint")
 parser.add_argument("--debug", action="store_true", default=True)
 parser.add_argument("-d", "--device", dest="device", help="Device to run on, the cpu or gpu.",
-                    type=str, default="cuda:1")
+                    type=str, default="cuda:0")
 parser.add_argument("--restart", action="store_true", default=False)
 args = parser.parse_args()
 #Following is needed to enable running the code when not using a package solution
@@ -67,12 +71,25 @@ def train(model, device, dataset, fold, restart, seed):
 
     # train_dataset = ConcatDataset([davis_dataset] * 5 + [yv_dataset])
 
-    training_data = DAVISDataset('/home/amax/code/data/davis/JPEGImages/480p', '/home/amax/code/data/davis/Annotations/480p',
+    # local path
+    training_data_yv = YoutubeDataset('/home/amax/code/data/YoutubeVOS/JPEGImages', '/home/amax/code/data/YoutubeVOS/Annotations',
+                                 5, is_bl=False,
+                                 # subset=load_sub_davis())
+                                 subset=None)
+    validation_data = YoutubeDataset('/home/amax/code/data/YoutubeVOS/valid/JPEGImages', '/home/amax/code/data/YoutubeVOS/valid/Annotations',
+                                   5, is_bl=False,
+                                   # subset=load_sub_davis())
+                                   subset=None)
+    # path in server
+    training_data_dv = DAVISDataset('/home/amax/code/data/davis/JPEGImages/480p',
+                                 '/home/amax/code/data/davis/Annotations/480p',
                                  5, is_bl=False,
                                  subset=load_sub_davis())
-    validation_data = DAVISDataset('/home/amax/code/data/davis/trainval/JPEGImages/480p', '/home/amax/code/data/davis/trainval/Annotations/480p',
-                                   5, is_bl=False,
-                                   subset=load_sub_davis())
+    # validation_data = DAVISDataset('/home/amax/code/data/davis/trainval/JPEGImages/480p',
+    #                                '/home/amax/code/data/davis/trainval/Annotations/480p',
+    #                                5, is_bl=False,
+    #                                subset=load_sub_davis())
+
         # davis.DatasetDAVIS(
         # datapath = config['davis_path'],
         # fold  = fold,
@@ -82,12 +99,13 @@ def train(model, device, dataset, fold, restart, seed):
         # mode   = "training",
         # data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
         # )
-    print("Loaded training set with", len(training_data), "samples")
-    print("Loaded validation set with", len(validation_data), "samples")
-    training_sampler = torch.utils.data.RandomSampler(training_data, num_samples=8000, replacement=True)
-    validation_sampler = torch.utils.data.RandomSampler(validation_data, num_samples=2000, replacement=True)
-    training_loader = DataLoader(training_data, sampler=training_sampler, batch_size=8, num_workers=20)
-    validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=16, num_workers=20)
+    print("Loaded training set with", len([training_data_dv]*5 + [training_data_yv]), "samples")
+    # print("Loaded validation set with", len(validation_data), "samples")
+    training_sampler = torch.utils.data.RandomSampler([training_data_dv]*5 + [training_data_yv], num_samples=8000, replacement=True)
+    # validation_sampler = torch.utils.data.RandomSampler(validation_data, num_samples=2000, replacement=True)
+    training_loader = DataLoader([training_data_dv]*5 + [training_data_yv], sampler=training_sampler, batch_size=8, num_workers=20)
+    # validation_loader = DataLoader(validation_data, sampler=validation_sampler, batch_size=16, num_workers=20)
+    validation_loader = None
 
     trainer = fss_trainer.FSSTrainer(
         model                = model,
@@ -234,7 +252,7 @@ def main(args):
         loss = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 4.0]), ignore_index=255),
         # loss=nn.CrossEntropyLoss(weight=torch.Tensor([1.0]), ignore_index=255),
     )
-    print(model)
+
     if args.checkpoint:
         checkpoint = torch.load(args.checkpoint)
         model.load_state_dict(checkpoint['net'])

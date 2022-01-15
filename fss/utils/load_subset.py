@@ -10,6 +10,11 @@ def load_sub_davis(path='/home/amax/code/test/fss/utils/davis_subset.txt'):
         subset = set(f.read().splitlines())
     return subset
 
+def load_sub_davis_local(path='/home/wangjian/workspace/test/fss/utils/davis_subset.txt'):
+    with open(path, mode='r') as f:
+        subset = set(f.read().splitlines())
+    return subset
+
 def load_sub_yv(path='util/yv_subset.txt'):
     with open(path, mode='r') as f:
         subset = set(f.read().splitlines())
