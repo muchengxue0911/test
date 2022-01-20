@@ -16,7 +16,9 @@ OBSERVABLE_DATA_KEYS = {
     'query_images',
     'support_classes',
     'query_classes',
-    'identifier'
+    'identifier',
+    'original_query_segmentations',
+    'original_query_sizes'
 }
 
         
@@ -52,7 +54,7 @@ class FSSEvaluator:
     def _visualize_episode(self, model_output, data):
         query_images = revert_imagenet_normalization(data['query_images'].cpu().detach())
         support_images = revert_imagenet_normalization(data['support_images'].cpu().detach())
-        qq = data['original_query_segmentations']
+        # qq = data['original_query_segmentations']
         support_anno_vis = self._get_visualization(support_images, data['support_segmentations'])
         query_pred_vis = self._get_visualization(query_images, model_output['query_segmentations'])
         query_anno_vis = self._get_visualization(query_images, data['query_segmentations'])
@@ -120,6 +122,7 @@ class FSSEvaluator:
     
     def _init_kpi(self, class_ids):
         return {idx: {'intersection': 0, 'union': 0} for idx in class_ids}
+
     def _update_kpi(self, kpi, pred, anno):
         intersections, unions = self._get_intersection_and_union(pred, anno)
         class_ids = self._get_class_ids(anno)

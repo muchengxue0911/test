@@ -22,7 +22,7 @@ class DAVISDataset(Dataset):
     - Apply random transform to each of the frame
     - The distance between frames is controlled
     """
-    def __init__(self, im_root, gt_root, max_jump, is_bl, subset=None):
+    def __init__(self, im_root, gt_root, max_jump, is_bl, subset=None, mode='train'):
         self.im_root = im_root
         self.gt_root = gt_root
         self.max_jump = max_jump
@@ -31,6 +31,13 @@ class DAVISDataset(Dataset):
         self.videos = []
         self.frames = {}
         self.nclass = 1
+
+        if mode == "evaluation":
+            self.use_original_imgsize = True
+        else:
+            self.use_original_imgsize = True  # xd /Johan
+        self.mode = mode
+        self.num_query_per_episode = 1
 
         vid_list = sorted(os.listdir(self.im_root))
         # Pre-filtering
@@ -192,8 +199,48 @@ class DAVISDataset(Dataset):
                   'query_classes': classes, 'support_classes': classes,
                   'identifier': f"class {video}, query {idx}"}
 
+        if self.mode == 'evaluation':
+            orig_query_segs = torch.full((self.num_query_per_episode, 500, 500), 255, dtype=torch.int64)
+            frame_query_name = frames[start_idx][:-4] + '.jpg'
+            png_query_name = frames[start_idx][:-4] + '.png'
+            frame_query_im = Image.open(path.join(vid_im_path, frame_query_name))
+            frame_query_gt = Image.open(path.join(vid_gt_path, png_query_name)).convert('P')
+            frame_query_im = self.all_im_dual_transform(frame_query_im)
+            frame_query_gt = self.all_gt_dual_transform(frame_query_gt)
+            frame_query_gt = torch.tensor(np.array(frame_query_gt))
+            output['original_query_segmentations'] = frame_query_gt[None]
+            output['original_query_sizes'] = torch.tensor(frame_query_im.size[::-1])[None] # ::-1 since imsize comes from PIL w,h format
+            davis2017val = ['loading', 'pigs', 'swing', 'dog', 'goat', 'bear', 'bmx-bumps', 'kite-walk', 'longboard','paragliding-launch',
+                            'car-shadow', 'varanus-cage', 'scooter-gray', 'lab-coat', 'car-roundabout', 'gold-fish','bus', 'miami-surf',
+                            'hockey', 'crossing', 'tractor-sand', 'blackswan', 'walking', 'motorbike', 'rhino','horsejump-low',
+                            'bike-packing', 'lucia', 'night-race', 'india', 'color-run', 'boat', 'rollerblade','tennis', 'cows',
+                            'mallard-fly', 'rallye', 'breakdance', 'planes-water', 'dog-gooses', 'upside-down', 'drone','soccerball',
+                            'paragliding', 'parkour', 'dog-agility', 'disc-jockey', 'scooter-board', 'cat-girl','lindy-hop', 'kite-surf',
+                            'schoolgirls', 'libby', 'shooting', 'skate-park', 'breakdance-flare', 'bmx-trees','tuk-tuk', 'kid-football',
+                            'scooter-black', 'elephant', 'motocross-bumps', 'mallard-water', 'drift-chicane','lady-running', 'train',
+                            'motocross-jump', 'drift-turn', 'dancing', 'car-turn', 'flamingo', 'surf', 'hike', 'judo','dogs-jump',
+                            'sheep', 'dance-jump', 'koala', 'camel', 'boxing-fisheye', 'dance-twirl', 'snowboard','mbike-trick', 'stunt',
+                            'dogs-scale', 'drift-straight', 'stroller', 'classic-car', 'soapbox', 'horsejump-high']
+            classes = torch.tensor([[davis2017val.index(video)]], dtype=torch.int64).reshape(1, 1)
+            output['query_classes'] = classes
 
         return output
 
     def __len__(self):
         return len(self.videos)
+
+    def get_classes(self):
+        davis2017val = ['loading', 'pigs', 'swing', 'dog', 'goat', 'bear', 'bmx-bumps', 'kite-walk', 'longboard', 'paragliding-launch',
+         'car-shadow', 'varanus-cage', 'scooter-gray', 'lab-coat', 'car-roundabout', 'gold-fish', 'bus', 'miami-surf',
+         'hockey', 'crossing', 'tractor-sand', 'blackswan', 'walking', 'motorbike', 'rhino', 'horsejump-low',
+         'bike-packing', 'lucia', 'night-race', 'india', 'color-run', 'boat', 'rollerblade', 'tennis', 'cows',
+         'mallard-fly', 'rallye', 'breakdance', 'planes-water', 'dog-gooses', 'upside-down', 'drone', 'soccerball',
+         'paragliding', 'parkour', 'dog-agility', 'disc-jockey', 'scooter-board', 'cat-girl', 'lindy-hop', 'kite-surf',
+         'schoolgirls', 'libby', 'shooting', 'skate-park', 'breakdance-flare', 'bmx-trees', 'tuk-tuk', 'kid-football',
+         'scooter-black', 'elephant', 'motocross-bumps', 'mallard-water', 'drift-chicane', 'lady-running', 'train',
+         'motocross-jump', 'drift-turn', 'dancing', 'car-turn', 'flamingo', 'surf', 'hike', 'judo', 'dogs-jump',
+         'sheep', 'dance-jump', 'koala', 'camel', 'boxing-fisheye', 'dance-twirl', 'snowboard', 'mbike-trick', 'stunt',
+         'dogs-scale', 'drift-straight', 'stroller', 'classic-car', 'soapbox', 'horsejump-high']
+
+        class_ids = [x-1 for x in range(1, len(davis2017val))]
+        return class_ids

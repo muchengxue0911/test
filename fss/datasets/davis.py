@@ -1,12 +1,12 @@
 # """Dataset code adapted from https://github.com/juhongm999/hsnet.git
 # """
 #
-# import os
-#
-# import PIL.Image as Image
-# import numpy as np
-# import torch
-# from torch.utils.data import Dataset
+import os
+
+import PIL.Image as Image
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 #
 # PASCAL_CLASSNAMES = [
 #     'skate-park', 'motocross-bumps', 'drift-straight', 'soapbox', 'parkour', 'shooting', 'drift-chicane', 'bike-packing',
@@ -23,17 +23,17 @@
 #     'dog-gooses', 'lady-running', 'soccerball', 'night-race']
 #
 #
-# class SequentialSampler(torch.utils.data.Sampler):
-#     def __init__(self, data_source, num_samples):
-#         self.data_source = data_source
-#         self.datalen = len(data_source)
-#         self.num_samples = num_samples
-#
-#     def __iter__(self):
-#         return iter([idx % self.datalen for idx in range(self.num_samples)])
-#
-#     def __len__(self):
-#         return self.num_samples
+class SequentialSampler(torch.utils.data.Sampler):
+    def __init__(self, data_source, num_samples):
+        self.data_source = data_source
+        self.datalen = len(data_source)
+        self.num_samples = num_samples
+
+    def __iter__(self):
+        return iter([idx % self.datalen for idx in range(self.num_samples)])
+
+    def __len__(self):
+        return self.num_samples
 #
 #
 # class DatasetDAVIS(Dataset):

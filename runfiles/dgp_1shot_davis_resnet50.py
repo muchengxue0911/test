@@ -10,8 +10,8 @@ from fss.datasets.davis_dataset import DAVISDataset
 from fss.utils.load_subset import load_sub_davis
 
 parser = argparse.ArgumentParser(description="Experiment runfile, you run experiments from this file")
-parser.add_argument("--train", action="store_true", default=True)
-parser.add_argument("--test", action="store_true", default=False)
+parser.add_argument("--train", action="store_true", default=False)
+parser.add_argument("--test", action="store_true", default=True)
 parser.add_argument("--dataset", type=str, required=True, default='davis')
 parser.add_argument("--fold", type=int, required=True)
 parser.add_argument("--test_num_support", type=int, default=1)
@@ -111,15 +111,9 @@ def test(model, device, dataset, fold, num_support, seed):
     test_transform = Compose([Resize((448,448)),
                               ToTensor(),
                               Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])])
-    data = davis.DatasetDAVIS(
-        datapath = config['pascal_path'],
-        fold  = fold,
-        transform = test_transform,
-        split      = 'val',
-        shot   = num_support,
-        mode   = "evaluation",
-        data_list_path = os.path.join(config['workspace_path'], 'data_splits', 'pascal')
-    )
+    data = DAVISDataset('/home/amax/code/data/davis/DAVIS2017/JPEGImages/480p', '/home/amax/code/data/davis/DAVIS2017/Annotations/480p',
+                                 5, is_bl=False,
+                                 subset=load_sub_davis(), mode="evaluation")
     sampler = davis.SequentialSampler(data, 5000)
     data = DataLoader(data, sampler=sampler, batch_size=16, num_workers=20)
         
@@ -234,7 +228,7 @@ def main(args):
         loss = nn.CrossEntropyLoss(weight=torch.Tensor([1.0, 4.0]), ignore_index=255),
         # loss=nn.CrossEntropyLoss(weight=torch.Tensor([1.0]), ignore_index=255),
     )
-    print(model)
+
     if args.checkpoint:
         checkpoint = torch.load(args.checkpoint)
         model.load_state_dict(checkpoint['net'])
